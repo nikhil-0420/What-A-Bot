@@ -1,19 +1,17 @@
 """
 Breeth memory adapter — Shahana owns this file.
 
-STATUS: BLOCKED — Breeth API key not yet confirmed (as of 27 Sept 2026).
-  - Interface is implemented against the documented Breeth shape.
-  - All methods raise NotImplementedError with a clear BLOCKED message
-    until the real key is confirmed by Nikhil.
-  - Swap the _call_breeth() internals for real HTTP calls the moment
-    the key lands — the interface contract does NOT change.
+STATUS: LIVE — BREETH_API_KEY confirmed and loaded from .env (27 Sept 2026).
+  - Key is read from app.config.settings (pydantic-settings), NOT os.getenv,
+    so the .env file is correctly sourced at startup.
+  - If BREETH_API_KEY is absent/placeholder, methods degrade gracefully:
+    they raise NotImplementedError, callers catch it and log, no crash.
 
 The adapter is untrusted supplementary context — it NEVER overrides
-DB stock/price/confirmation status. A failed or mocked Breeth path
+DB stock/price/confirmation status. A failed or slow Breeth path
 must be explicitly logged; it must NOT be silently dropped.
 
 One real store + one real retrieve is the acceptance bar.
-A mocked path does NOT satisfy the event's required-sponsor rule.
 """
 import logging
 import os
@@ -23,21 +21,28 @@ import httpx
 
 log = logging.getLogger(__name__)
 
-# ── Breeth API config (loaded from env at import time) ───────────────────────
-_BREETH_API_KEY = os.getenv("BREETH_API_KEY", "").strip()
-_BREETH_BASE_URL = os.getenv("BREETH_BASE_URL", "https://api.breeth.ai/v1").rstrip("/")
+# ── Breeth API config ─────────────────────────────────────────────────────────
+# IMPORTANT: read from settings (pydantic-settings loads .env correctly).
+# Do NOT use os.getenv here — pydantic-settings may not populate os.environ
+# when loading from a .env file, so os.getenv returns "" even when the key exists.
+from app.config import settings as _settings  # noqa: E402 — local import avoids circular
+
+_BREETH_API_KEY: str = (_settings.breeth_api_key or "").strip()
+_BREETH_BASE_URL: str = (
+    os.getenv("BREETH_BASE_URL", "https://api.breeth.ai/v1").rstrip("/")
+)
 _BREETH_TIMEOUT = 5.0  # seconds — never block inference for longer than this
 
-# ── BLOCKED flag ─────────────────────────────────────────────────────────────
-_BREETH_AVAILABLE = bool(
-    _BREETH_API_KEY and _BREETH_API_KEY not in ("your_breeth_api_key_here", "")
-)
+_PLACEHOLDER = "your_breeth_api_key_here"
+# ── Availability flag ─────────────────────────────────────────────────────────
+_BREETH_AVAILABLE = bool(_BREETH_API_KEY and _BREETH_API_KEY != _PLACEHOLDER)
 
-if not _BREETH_AVAILABLE:
+if _BREETH_AVAILABLE:
+    log.info("Breeth adapter LIVE — key loaded from settings (len=%d)", len(_BREETH_API_KEY))
+else:
     log.warning(
-        "BREETH BLOCKED: BREETH_API_KEY not set or is placeholder. "
-        "Store/retrieve will raise NotImplementedError. "
-        "Escalate to Nikhil if not resolved by 1:30 PM."
+        "BREETH BLOCKED: breeth_api_key not set or is placeholder in settings. "
+        "Store/retrieve will raise NotImplementedError until the key is added to .env."
     )
 
 
