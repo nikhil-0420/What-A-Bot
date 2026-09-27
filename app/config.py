@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     model_name: str = ""
     model_fallback_name: str = ""
 
+    # Gemini-specific (Shahana) — verified live 27 Sept 2026
+    # Primary: gemini-3.5-flash-lite (FC PASS, 2023ms)
+    # Fallback: gemini-3.6-flash     (FC PASS, 2532ms)
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-3.5-flash-lite"          # confirmed primary
+    gemini_fallback_model: str = "gemini-3.6-flash"      # confirmed fallback
+
     n8n_webhook_url: str = ""
     n8n_shared_secret: str = ""
 
