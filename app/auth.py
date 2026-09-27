@@ -172,14 +172,6 @@ async def get_businesses(owner: dict = Depends(get_current_owner)):
 
 
 # Preserved stubs for other teammates (Jagdeep / Sam / etc.)
-@router.get("/businesses/{id}/catalog")
-async def get_catalog(id: str):
-    raise HTTPException(status_code=501, detail="Not implemented: Get catalog route pending implementation.")
-
-
-@router.get("/businesses/{id}/services")
-async def get_services(id: str):
-    raise HTTPException(status_code=501, detail="Not implemented: Get services route pending implementation.")
 
 
 @router.get("/businesses/{id}/slots")
