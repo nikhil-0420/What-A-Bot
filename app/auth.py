@@ -171,12 +171,4 @@ async def get_businesses(owner: dict = Depends(get_current_owner)):
     return [{"business_id": r[0], "name": r[1], "business_type": r[2]} for r in rows]
 
 
-# Preserved stubs for other teammates (Jagdeep / Sam / etc.)
 
-
-
-
-
-@router.get("/businesses/{id}/evidence")
-async def get_evidence(id: str):
-    raise HTTPException(status_code=501, detail="Not implemented: Get evidence route pending implementation by Jagdeep.")
