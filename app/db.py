@@ -43,3 +43,17 @@ def health_ping() -> bool:
     except Exception:
         log.exception("Health ping failed")
         return False
+
+
+def close_pool() -> None:
+    """Close the connection pool cleanly on shutdown."""
+    global pool
+    if pool is not None:
+        try:
+            pool.close()
+        except Exception:
+            log.exception("Error closing DB pool")
+        finally:
+            pool = None
+            log.info("DB pool closed")
+

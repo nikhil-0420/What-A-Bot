@@ -43,6 +43,13 @@ async def _sender_loop() -> None:
             await asyncio.sleep(POLL_INTERVAL_S)
 
 
+def _redact_token(text: str) -> str:
+    """Scrub bot token from any logged strings, URLs, or exception messages."""
+    if settings.telegram_bot_token and settings.telegram_bot_token in text:
+        return text.replace(settings.telegram_bot_token, "[REDACTED_BOT_TOKEN]")
+    return text
+
+
 async def send_one_pending() -> bool:
     """Claim one pending outbox row, send via Telegram API (or mock), record result.
     Returns True if a row was claimed and processed, False if idle."""
@@ -119,19 +126,26 @@ async def send_one_pending() -> bool:
                 resp = await client.post(url, json=json_data, timeout=10.0)
                 
                 if resp.status_code in (200, 201):
-                    data = resp.json()
-                    if data.get("ok"):
-                        # Telegram returns message object on success
+                    try:
+                        data = resp.json()
+                    except Exception:
+                        data = {}
+
+                    if data.get("ok") is True:
                         provider_sid = str(data.get("result", {}).get("message_id"))
-                    final_state = "accepted"
-                    log.info("Sent outbox %s → Telegram Msg ID %s", outbox_id, provider_sid)
+                        final_state = "accepted"
+                        log.info("Sent outbox %s → Telegram Msg ID %s", outbox_id, provider_sid)
+                    else:
+                        final_state = "failed"
+                        log.error("Telegram API returned ok=false for outbox %s: %s", outbox_id, _redact_token(resp.text))
                 else:
-                    log.error("Telegram API error for outbox %s: %s %s", outbox_id, resp.status_code, resp.text)
+                    log.error("Telegram API error for outbox %s: %s %s", outbox_id, resp.status_code, _redact_token(resp.text))
                     final_state = "unknown"
                     
-        except Exception:
-            log.exception("Telegram send failed for outbox %s — marking unknown", outbox_id)
+        except Exception as exc:
+            log.error("Telegram send failed for outbox %s — marking unknown: %s", outbox_id, _redact_token(str(exc)))
             final_state = "unknown"
+
 
     # 3. Record result
     with get_conn() as conn:

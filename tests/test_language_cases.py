@@ -23,5 +23,10 @@ CASES = {
 }
 
 
+import pytest
+
+
+@pytest.mark.skip(reason="Pending agent loop implementation by Shahana")
 def test_all_language_cases_produce_correct_stored_outcomes():
     raise NotImplementedError
+
