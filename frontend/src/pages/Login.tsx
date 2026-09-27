@@ -31,10 +31,16 @@ export default function Login({ onLogin, navigate }: LoginProps) {
         navigate('businesses');
       }
     } catch (cause) {
-      setError({
-        message: cause instanceof ApiError ? cause.message : 'Sign-in failed. Please try again.',
-        code: cause instanceof ApiError ? cause.code : undefined,
-      });
+      if (cause instanceof ApiError) {
+        setError({
+          message: cause.message,
+          code: cause.code || (cause.status ? `HTTP ${cause.status}` : undefined),
+        });
+      } else {
+        setError({
+          message: cause instanceof Error ? cause.message : 'Sign-in failed. Please try again.',
+        });
+      }
     } finally {
       setSubmitting(false);
     }

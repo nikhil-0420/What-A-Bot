@@ -300,7 +300,7 @@ def test_dispatcher_backoff_parameterization_and_injection_rejection():
             conn.execute(
                 """
                 INSERT INTO inbox (input_id, source, session_id, business_id, body, status, attempts)
-                VALUES (%s, 'telegram', %s, 'demo-stationery-1', '{"text": "retry me"}'::jsonb, 'received', 0)
+                VALUES (%s, 'telegram', %s, 'demo-stationery-1', '{"text": "retry me"}'::jsonb, 'processing', 0)
                 """,
                 (test_input_id, session_id),
             )

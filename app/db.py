@@ -27,6 +27,12 @@ def init_pool() -> None:
     log.info("DB pool initialised (min=2, max=15, max_idle=300s, max_lifetime=1800s)")
 
 
+def get_pool() -> ConnectionPool:
+    """Return the raw pool instance if needed."""
+    assert pool is not None, "Pool not initialised — call init_pool() first"
+    return pool
+
+
 @contextlib.contextmanager
 def get_conn():
     """Yield a pooled connection. Use for short-lived transactions only —

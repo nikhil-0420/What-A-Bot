@@ -48,18 +48,30 @@ async def lifespan(app: FastAPI):
     log.info("EmberGround shut down")
 
 
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.billing.dodo import router as dodo_router
+from app.evidence_panel.routes import router as evidence_router
+from app.owner_page.routes import router as owner_router
+
 app = FastAPI(title="EmberGround", lifespan=lifespan)
+
+# Enable CORS for local dev and cross-origin access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Register routers
 app.include_router(webhook_router)
 app.include_router(auth_router)
 app.include_router(bot_link_router)
-
-# Owner page and evidence panel routers are wired in later blocks:
-# from app.owner_page.routes import router as owner_router
-# from app.evidence_panel.routes import router as evidence_router
-# app.include_router(owner_router)
-# app.include_router(evidence_router)
+app.include_router(owner_router)
+app.include_router(evidence_router)
+app.include_router(dodo_router)
 
 
 @app.get("/health")

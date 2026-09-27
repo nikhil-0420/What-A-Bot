@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 _session_locks: dict[str, asyncio.Lock] = {}
 
 MAX_ATTEMPTS = 3
-BACKOFF_SECONDS = [2, 5, 15]
+BACKOFF_SECONDS = [10, 30, 60]
 POLL_INTERVAL_S = 1.0
 
 _dispatcher_task: asyncio.Task | None = None

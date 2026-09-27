@@ -1,5 +1,6 @@
 // client.ts - API wrappers based on CONTRACTS.md
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const RAW_BASE_URL = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '').trim();
+const BASE_URL = RAW_BASE_URL ? RAW_BASE_URL.replace(/\/$/, '') : '';
 const TOKEN_KEY = 'emberground.owner-token';
 const OWNER_EMAIL_KEY = 'emberground.owner-email';
 
@@ -223,18 +224,26 @@ export async function fetchWithAuth<T>(endpoint: string, options: RequestInit = 
   const token = getAuthToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
+  const targetUrl = `${BASE_URL}${endpoint}`;
   let response: Response;
   try {
-    response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
-  } catch {
+    response = await fetch(targetUrl, { ...options, headers });
+  } catch (err: any) {
     if (import.meta.env.DEV) {
-      console.warn(`[DEV MODE] Backend unreachable at ${BASE_URL}${endpoint}. Using mock fallback.`);
+      console.warn(`[DEV MODE] Backend unreachable at ${targetUrl}. Using mock fallback.`, err);
       return handleDevMock<T>(endpoint, options);
     }
-    throw new ApiError('Could not reach the server. Check your connection and try again.', 0);
+    const errDetail = err?.message ? ` (${err.message})` : '';
+    throw new ApiError(`Could not reach the server${errDetail}. Target: ${targetUrl || window.location.origin + endpoint}`, 0);
   }
 
-  const payload = await response.json().catch(() => null) as ApiErrorEnvelope | null;
+  const rawText = await response.text().catch(() => '');
+  let payload: any = null;
+  try {
+    payload = rawText ? JSON.parse(rawText) : null;
+  } catch {
+    payload = null;
+  }
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -243,14 +252,22 @@ export async function fetchWithAuth<T>(endpoint: string, options: RequestInit = 
         window.location.hash = 'login';
       }
     }
+    const serverMessage =
+      (payload && typeof payload.detail === 'string' && payload.detail) ||
+      (payload && typeof payload.error === 'object' && payload.error?.message) ||
+      (payload && typeof payload.message === 'string' && payload.message) ||
+      (payload && typeof payload.detail === 'object' && JSON.stringify(payload.detail)) ||
+      rawText ||
+      `Request failed with status ${response.status}.`;
+
     throw new ApiError(
-      payload?.error?.message || `Request failed (${response.status}). Please try again.`,
+      serverMessage,
       response.status,
       payload?.error?.code,
     );
   }
 
-  return payload as T;
+  return (payload !== null ? payload : (rawText as unknown)) as T;
 }
 
 const businessPath = (id: string) => `/businesses/${encodeURIComponent(id)}`;
