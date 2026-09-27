@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-3.5-flash-lite"          # confirmed primary
     gemini_fallback_model: str = "gemini-3.6-flash"      # confirmed fallback
 
+    elevenlabs_api_key: str = ""
+
     n8n_webhook_url: str = ""
     n8n_shared_secret: str = ""
 

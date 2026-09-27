@@ -502,6 +502,28 @@ async def run_agent_turn(
         None, _load_conversation, session_id
     )
     current_text = message_body.get("text", "") if isinstance(message_body, dict) else str(message_body)
+    
+    # Check for voice note
+    voice_file_id = message_body.get("voice_file_id") if isinstance(message_body, dict) else None
+    if voice_file_id:
+        try:
+            from app.voice import download_and_transcribe
+            transcript = await download_and_transcribe(voice_file_id)
+            current_text = f"[Transcribed Voice Note]: {transcript}"
+        except Exception as e:
+            log.warning("Voice transcription failed for %s: %s", input_id, e)
+            await asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: finish_reply(
+                    kind="clarification",
+                    text="I couldn't hear that clearly. Could you please type it out?",
+                    input_id=input_id,
+                    session_id=session_id,
+                    business_id=business_id,
+                ),
+            )
+            return
+
     contents = history + [{"role": "user", "parts": [{"text": current_text}]}]
 
     log.info(

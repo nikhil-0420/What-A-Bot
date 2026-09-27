@@ -61,7 +61,11 @@ async def telegram_webhook(request: Request):
         message_id = message.get("message_id")
         chat = message.get("chat", {})
         chat_id = chat.get("id")
+
+        # Extract text or voice note
         body_text = message.get("text", "")
+        voice = message.get("voice", {})
+        voice_file_id = voice.get("file_id") if voice else None
 
         if not chat_id:
             log.warning("Missing chat id in Telegram update %s", update_id)
@@ -139,7 +143,7 @@ async def telegram_webhook(request: Request):
                 business_id = sess_row[1]
 
                 # --- 6. Persist to inbox ---
-                body_payload = {"text": body_text}
+                body_payload = {"text": body_text, "voice_file_id": voice_file_id}
                 if link_msg:
                     body_payload["link_response"] = link_msg
 
