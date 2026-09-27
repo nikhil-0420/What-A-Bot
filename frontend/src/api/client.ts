@@ -1,11 +1,6 @@
 // client.ts - API wrappers based on CONTRACTS.md
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-const IS_MOCK = import.meta.env.DEV;
-
-function delay(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 export async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem('token');
