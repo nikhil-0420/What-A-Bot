@@ -17,7 +17,7 @@ from app.bot_link import router as bot_link_router
 from app.db import close_pool, health_ping, init_pool
 from app.dispatcher import dispatch_pending, start_dispatcher_loop
 from app.recovery import requeue_interrupted
-from app.sender import start_sender_loop
+from app.sender import close_sender, start_sender_loop
 from app.webhook import router as webhook_router
 
 logging.basicConfig(
@@ -40,6 +40,7 @@ async def lifespan(app: FastAPI):
     log.info("EmberGround ready")
     yield
     # --- Shutdown ---
+    await close_sender()
     close_pool()
     log.info("EmberGround shut down")
 

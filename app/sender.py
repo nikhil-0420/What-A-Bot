@@ -19,6 +19,23 @@ log = logging.getLogger(__name__)
 POLL_INTERVAL_S = 2.0
 
 _sender_task: asyncio.Task | None = None
+_http_client: httpx.AsyncClient | None = None
+
+
+def get_http_client() -> httpx.AsyncClient:
+    """Return shared AsyncClient instance, re-creating if closed or uninitialized."""
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(timeout=10.0)
+    return _http_client
+
+
+async def close_sender() -> None:
+    """Close the shared HTTP client on application shutdown."""
+    global _http_client
+    if _http_client is not None and not _http_client.is_closed:
+        await _http_client.aclose()
+        _http_client = None
 
 
 async def start_sender_loop() -> None:
@@ -122,26 +139,26 @@ async def send_one_pending() -> bool:
         }
 
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(url, json=json_data, timeout=10.0)
-                
-                if resp.status_code in (200, 201):
-                    try:
-                        data = resp.json()
-                    except Exception:
-                        data = {}
+            client = get_http_client()
+            resp = await client.post(url, json=json_data)
+            
+            if resp.status_code in (200, 201):
+                try:
+                    data = resp.json()
+                except Exception:
+                    data = {}
 
-                    if data.get("ok") is True:
-                        provider_sid = str(data.get("result", {}).get("message_id"))
-                        final_state = "accepted"
-                        log.info("Sent outbox %s → Telegram Msg ID %s", outbox_id, provider_sid)
-                    else:
-                        final_state = "failed"
-                        log.error("Telegram API returned ok=false for outbox %s: %s", outbox_id, _redact_token(resp.text))
+                if data.get("ok") is True:
+                    provider_sid = str(data.get("result", {}).get("message_id"))
+                    final_state = "accepted"
+                    log.info("Sent outbox %s → Telegram Msg ID %s", outbox_id, provider_sid)
                 else:
-                    log.error("Telegram API error for outbox %s: %s %s", outbox_id, resp.status_code, _redact_token(resp.text))
-                    final_state = "unknown"
-                    
+                    final_state = "failed"
+                    log.error("Telegram API returned ok=false for outbox %s: %s", outbox_id, _redact_token(resp.text))
+            else:
+                log.error("Telegram API error for outbox %s: %s %s", outbox_id, resp.status_code, _redact_token(resp.text))
+                final_state = "unknown"
+                
         except Exception as exc:
             log.error("Telegram send failed for outbox %s — marking unknown: %s", outbox_id, _redact_token(str(exc)))
             final_state = "unknown"

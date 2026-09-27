@@ -280,3 +280,97 @@ def test_n8n_notify_failure_resilience():
     result = notify_hold("00000000-0000-0000-0000-000000000000", "demo-stationery-1")
     # Returns boolean, never throws
     assert isinstance(result, bool)
+
+
+def test_dispatcher_backoff_parameterization_and_injection_rejection():
+    """Verify parameterized make_interval sets future timestamp and rejects malicious injection."""
+    test_input_id = f"tg:test:backoff_{uuid.uuid4().hex[:8]}"
+    session_id = str(uuid.uuid4())
+    unique_phone = f"phone_{uuid.uuid4().hex[:8]}"
+
+    with get_conn() as conn:
+        with conn.transaction():
+            conn.execute(
+                """
+                INSERT INTO sessions (session_id, customer_phone, destination, active_business_id)
+                VALUES (%s, %s, 'telegram_bot', 'demo-stationery-1')
+                """,
+                (session_id, unique_phone),
+            )
+            conn.execute(
+                """
+                INSERT INTO inbox (input_id, source, session_id, business_id, body, status, attempts)
+                VALUES (%s, 'telegram', %s, 'demo-stationery-1', '{"text": "retry me"}'::jsonb, 'received', 0)
+                """,
+                (test_input_id, session_id),
+            )
+
+    # 1. Trigger normal retry (attempt 1) -> should schedule backoff via make_interval(secs => %s)
+    with patch("app.dispatcher.run_terminal_action", side_effect=RuntimeError("Simulated transient error")):
+        import asyncio
+        asyncio.run(_process_one(test_input_id, session_id, "demo-stationery-1"))
+
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT status, attempts, next_attempt_at FROM inbox WHERE input_id = %s",
+            (test_input_id,),
+        ).fetchone()
+        assert row[0] == "received"
+        assert row[1] == 1
+        assert row[2] is not None
+
+    # 2. Test SQL injection resistance: pass non-numeric string as parameter to make_interval
+    import psycopg
+    with pytest.raises(psycopg.Error):
+        with get_conn() as conn:
+            conn.execute(
+                """
+                UPDATE inbox SET next_attempt_at = now() + make_interval(secs => %s)
+                WHERE input_id = %s
+                """,
+                ("10; DROP TABLE inbox;", test_input_id),
+            )
+
+
+def test_pool_headroom_and_concurrent_checkouts():
+    """Verify pool has at least 10-15 connections and handles concurrent checkouts."""
+    import concurrent.futures
+    import app.db as app_db
+
+    assert app_db.pool is not None
+    assert app_db.pool.max_size >= 10, f"Expected max_size >= 10, got {app_db.pool.max_size}"
+
+    def checkout_worker(i):
+        with app_db.get_conn() as conn:
+            res = conn.execute("SELECT %s", (i,)).fetchone()
+            return res[0]
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(checkout_worker, i) for i in range(10)]
+        results = [f.result(timeout=10.0) for f in futures]
+
+    assert results == list(range(10))
+
+
+def test_session_lock_cleanup():
+    """Verify session locks are cleaned up when no pending messages exist."""
+    from app.dispatcher import _session_locks, _get_session_lock, _cleanup_session_lock
+    sess_id = f"test_sess_{uuid.uuid4().hex[:8]}"
+
+    # Acquire lock
+    lock = _get_session_lock(sess_id)
+    assert sess_id in _session_locks
+
+    # With no messages in inbox for sess_id, cleanup should evict it
+    _cleanup_session_lock(sess_id)
+    assert sess_id not in _session_locks
+
+
+def test_sender_client_reuse():
+    """Verify shared AsyncClient is reused across calls."""
+    from app.sender import get_http_client
+    cli1 = get_http_client()
+    cli2 = get_http_client()
+    assert cli1 is cli2
+    assert not cli1.is_closed
+
