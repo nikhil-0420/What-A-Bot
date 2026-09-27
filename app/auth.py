@@ -174,24 +174,7 @@ async def get_businesses(owner: dict = Depends(get_current_owner)):
 # Preserved stubs for other teammates (Jagdeep / Sam / etc.)
 
 
-@router.get("/businesses/{id}/slots")
-async def get_slots(id: str, service_id: str = None):
-    raise HTTPException(status_code=501, detail="Not implemented: Get slots route pending implementation.")
 
-
-@router.get("/businesses/{id}/orders")
-async def get_orders(id: str, status: str = None):
-    raise HTTPException(status_code=501, detail="Not implemented: Get orders route pending implementation.")
-
-
-@router.get("/businesses/{id}/holds")
-async def get_holds(id: str):
-    raise HTTPException(status_code=501, detail="Not implemented: Get holds route pending implementation by Jagdeep.")
-
-
-@router.post("/businesses/{id}/holds")
-async def resolve_hold(id: str, payload: dict):
-    raise HTTPException(status_code=501, detail="Not implemented: Resolve hold route pending implementation by Jagdeep.")
 
 
 @router.get("/businesses/{id}/evidence")
