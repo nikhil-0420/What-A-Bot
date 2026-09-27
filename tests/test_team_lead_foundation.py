@@ -220,6 +220,9 @@ def test_webhook_unique_input_id_and_duplicate_safety(client):
 
 
 def test_dispatcher_attention_and_retry():
+    from app.dispatcher import stop_dispatcher_loop
+    stop_dispatcher_loop()
+
     test_input_id = f"tg:test:attention_{uuid.uuid4().hex[:8]}"
     session_id = str(uuid.uuid4())
     unique_phone = f"phone_{uuid.uuid4().hex[:8]}"

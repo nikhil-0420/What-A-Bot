@@ -130,9 +130,9 @@ export default function Login({ onLogin, navigate }: LoginProps) {
                   window.location.hash = 'register';
                 }
               }}
-              style={{ color: 'var(--color-outline, #6f7881)', fontSize: '14px', textDecoration: 'underline', cursor: 'pointer' }}
+              style={{ color: 'var(--primary, #059669)', fontSize: '13.5px', textDecoration: 'none', fontWeight: 500, cursor: 'pointer' }}
             >
-              Don't have an account? Register here.
+              Don't have an account? Register here &rarr;
             </a>
           </div>
 

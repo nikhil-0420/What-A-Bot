@@ -9,6 +9,9 @@ type HeaderProps = {
 };
 
 export function Header({ email, title, showBack = false, onBack, onLogout }: HeaderProps) {
+  if (!showBack && !email && !title) {
+    return null;
+  }
   return (
     <header className="portal-header">
       <div className="portal-header__inner">

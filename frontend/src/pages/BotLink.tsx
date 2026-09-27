@@ -72,7 +72,7 @@ export default function BotLink({ business, businessId, onBack }: BotLinkProps) 
               <input id="generated-url" value={link.deep_link_url} readOnly onFocus={(event) => event.currentTarget.select()} />
               <button className="button button-secondary" type="button" onClick={copyLink}>{copied ? 'Copied' : 'Copy link'}</button>
               <a href={link.deep_link_url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-                <button className="button button-primary" type="button" style={{ background: 'var(--color-secondary, #006c4a)' }}>Open</button>
+                <button className="button button-primary" type="button">Open</button>
               </a>
             </div>
             <p className="link-warning">

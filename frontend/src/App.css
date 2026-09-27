@@ -6,12 +6,12 @@
 }
 
 .app-sidebar {
-  width: 260px;
-  background: var(--bg-surface);
-  border-right: 1px solid var(--border-color);
+  width: 250px;
+  background: #0f172a;
+  border-right: 1px solid #1e293b;
   display: flex;
   flex-direction: column;
-  padding: 24px 16px;
+  padding: 20px 14px;
   flex-shrink: 0;
 }
 
@@ -19,105 +19,98 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px 32px 12px;
+  padding: 4px 10px 24px 10px;
 }
 
 .sidebar-header h1 {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
-  color: var(--text-main);
+  color: #ffffff;
   letter-spacing: -0.02em;
 }
 
 .version-badge {
-  background: rgba(255,255,255,0.1);
-  color: var(--text-muted);
+  background: rgba(5, 150, 105, 0.2);
+  color: #34d399;
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 4px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.5px;
 }
 
 .app-nav {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   flex-grow: 1;
 }
 
 .nav-group-title {
   font-size: 11px;
   font-weight: 600;
-  color: #71717A;
-  margin: 16px 0 8px 12px;
-  letter-spacing: 0.05em;
+  color: #64748b;
+  margin: 14px 0 6px 10px;
+  letter-spacing: 0.06em;
 }
 
 .app-nav button {
   background: transparent;
   border: none;
-  color: var(--text-muted);
-  box-shadow: none;
-  font-size: 14px;
-  padding: 10px 12px;
+  color: #94a3b8;
+  font-size: 13.5px;
+  padding: 9px 12px;
   text-align: left;
   border-radius: 6px;
   width: 100%;
+  font-weight: 400;
+  justify-content: flex-start;
+  box-shadow: none;
 }
 
 .app-nav button:hover {
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  transform: none;
 }
 
 .app-nav button.active {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-main);
+  background: rgba(5, 150, 105, 0.15);
+  color: #34d399;
   font-weight: 500;
+  border-left: 3px solid #10b981;
+  border-radius: 0 6px 6px 0;
+  transform: none;
 }
 
 .app-content {
   flex-grow: 1;
   overflow-y: auto;
-  background: var(--bg-base);
+  background: var(--bg-base, #f8fafc);
 }
 
 .content-inner {
-  max-width: 1000px;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 40px;
+  padding: 32px 36px;
 }
 
-.login-page, .business-picker {
-  max-width: 400px;
-  margin: 80px auto;
-}
-
-.login-page form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.business-picker button {
-  width: 100%;
-  text-align: left;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--border-color);
-  padding: 16px;
-  font-size: 16px;
-}
-
-.business-picker button:hover {
-  background: rgba(255,255,255,0.1);
-  border-color: var(--primary);
-}
-
-.content-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* Page Header helper */
+.page-header {
   margin-bottom: 24px;
+}
+
+.page-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.02em;
+}
+
+.page-header p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
 }

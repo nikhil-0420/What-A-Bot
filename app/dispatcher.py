@@ -70,6 +70,16 @@ async def start_dispatcher_loop() -> None:
     log.info("Supervised dispatcher loop started")
 
 
+def stop_dispatcher_loop() -> None:
+    """Stop the supervised background dispatcher worker if running."""
+    global _dispatcher_task
+    if _dispatcher_task and not _dispatcher_task.done():
+        _dispatcher_task.cancel()
+        _dispatcher_task = None
+        log.info("Supervised dispatcher loop stopped")
+
+
+
 async def _dispatcher_loop() -> None:
     """Run continuously, polling due inbox rows respecting next_attempt_at."""
     while True:
