@@ -133,7 +133,7 @@ export default function OwnerPortal() {
               <h1>{business.name}</h1>
               <p>Business access is active for <strong>{owner?.email}</strong>.</p>
             </div>
-            <button className="button button-primary" type="button" onClick={() => setShowBotLink(true)}>Connect WhatsApp <span aria-hidden="true">&#8594;</span></button>
+            <button className="button button-primary" type="button" onClick={() => setShowBotLink(true)}>Connect Telegram <span aria-hidden="true">&#8594;</span></button>
           </div>
           {error && (
             <AlertBanner
@@ -143,7 +143,7 @@ export default function OwnerPortal() {
             />
           )}
           <div className="welcome-rule" />
-          <p className="welcome-note">Choose “Connect WhatsApp” to create a secure, single-use setup link for this shop.</p>
+          <p className="welcome-note">Choose “Connect Telegram” to create a secure, single-use setup link for this shop.</p>
         </main>
       )}
       <BottomNav

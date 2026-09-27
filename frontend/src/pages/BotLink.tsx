@@ -60,7 +60,7 @@ export default function BotLink({ business, businessId, onBack }: BotLinkProps) 
 
         <div className="link-instructions">
           <div className="instruction-row"><span>01</span><p>Generate a secure, single-use link.</p></div>
-          <div className="instruction-row"><span>02</span><p>Open it on the WhatsApp or Telegram account you want to connect.</p></div>
+          <div className="instruction-row"><span>02</span><p>Open it on the Telegram account you want to connect.</p></div>
           <div className="instruction-row"><span>03</span><p>Press <strong>/start</strong> in the chat to bind the session before it expires.</p></div>
         </div>
 
@@ -76,7 +76,7 @@ export default function BotLink({ business, businessId, onBack }: BotLinkProps) 
               </a>
             </div>
             <p className="link-warning">
-              This link works once and expires after 10 minutes. Click the link and send /start in Telegram/WhatsApp to activate your session.
+              This link works once and expires after 10 minutes. Click the link and send /start in Telegram to activate your session.
             </p>
             <button className="text-button regenerate-button" type="button" onClick={createLink} disabled={working}>
               {working ? 'Generating...' : 'Generate a fresh link'}

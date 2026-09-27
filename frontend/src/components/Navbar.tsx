@@ -21,7 +21,7 @@ export default function Navbar({ business, onChangeBusiness, onCreateBotLink, on
 			</div>
 			<nav className="nav-actions" aria-label="Owner actions">
 				<button className="text-button" type="button" onClick={onChangeBusiness}>Change shop</button>
-				<button className="button button-secondary nav-link-button" type="button" onClick={onCreateBotLink}>Connect WhatsApp</button>
+				<button className="button button-secondary nav-link-button" type="button" onClick={onCreateBotLink}>Connect Telegram</button>
 				<button className="text-button" type="button" onClick={onLogout}>Sign out</button>
 			</nav>
 		</header>

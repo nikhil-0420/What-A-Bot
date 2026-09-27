@@ -54,7 +54,7 @@ export default function Login({ onLogin, navigate }: LoginProps) {
         </span>
         <span className="login-brand__chip"><i />WHAT-A-BOT COCKPIT</span>
         <h1>Retailer Portal Login</h1>
-        <p className="story-description">Manage your shop's WhatsApp ordering assistant.</p>
+        <p className="story-description">Manage your shop's Telegram ordering assistant.</p>
       </section>
 
       <section className="login-panel">

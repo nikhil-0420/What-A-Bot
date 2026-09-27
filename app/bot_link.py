@@ -12,6 +12,41 @@ log = logging.getLogger(__name__)
 router = APIRouter(tags=["bot_link"])
 
 
+_cached_bot_username: str | None = None
+
+
+def get_bot_username() -> str:
+    """Return the cached or dynamically resolved Telegram bot username."""
+    global _cached_bot_username
+    if _cached_bot_username:
+        return _cached_bot_username
+
+    if settings.telegram_bot_username and settings.telegram_bot_username not in ("", "emberground_bot"):
+        _cached_bot_username = settings.telegram_bot_username
+        return _cached_bot_username
+
+    # Try resolving dynamically via Telegram getMe API if token is configured
+    if settings.telegram_bot_token:
+        try:
+            import httpx
+            resp = httpx.get(
+                f"https://api.telegram.org/bot{settings.telegram_bot_token}/getMe",
+                timeout=4.0,
+            )
+            if resp.status_code == 200:
+                payload = resp.json()
+                username = payload.get("result", {}).get("username")
+                if username:
+                    log.info("Dynamically resolved Telegram bot username: @%s", username)
+                    _cached_bot_username = username
+                    return _cached_bot_username
+        except Exception as exc:
+            log.warning("Could not dynamically resolve Telegram bot username via getMe: %s", exc)
+
+    _cached_bot_username = settings.telegram_bot_username or "wht_a_bot"
+    return _cached_bot_username
+
+
 def issue_token(business_id: str, owner_id: str) -> dict:
     """Issue a single-use bot link token with 10-minute expiry."""
     token = secrets.token_urlsafe(16)
@@ -27,7 +62,8 @@ def issue_token(business_id: str, owner_id: str) -> dict:
                 (token, business_id, owner_id, expires_at),
             )
 
-    deep_link_url = f"https://t.me/{settings.telegram_bot_username}?start={token}"
+    bot_username = get_bot_username()
+    deep_link_url = f"https://t.me/{bot_username}?start={token}"
     return {
         "token": token,
         "deep_link_url": deep_link_url,
