@@ -5,13 +5,26 @@ export default function Holds({ businessId }: { businessId: string }) {
   const [holds, setHolds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadHolds = () => {
     setLoading(true);
     api.getHolds(businessId)
       .then(setHolds)
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadHolds();
   }, [businessId]);
+
+  const handleResolve = async (orderId: string, approve: boolean) => {
+    try {
+      await api.resolveHold(businessId, { order_id: orderId, approve });
+      loadHolds();
+    } catch (err: any) {
+      alert("Failed to resolve hold: " + (err?.message || "Unknown error"));
+    }
+  };
 
   return (
     <div className="glass-panel">
@@ -53,14 +66,14 @@ export default function Holds({ businessId }: { businessId: string }) {
                 <td style={{ display: 'flex', gap: '8px' }}>
                   <button
                     style={{ padding: '6px 12px', fontSize: '13px' }}
-                    onClick={() => api.resolveHold(businessId, { order_id: h.order_id, approve: true })}
+                    onClick={() => handleResolve(h.order_id, true)}
                   >
                     Approve
                   </button>
                   <button
                     className="danger"
                     style={{ padding: '6px 12px', fontSize: '13px' }}
-                    onClick={() => api.resolveHold(businessId, { order_id: h.order_id, approve: false })}
+                    onClick={() => handleResolve(h.order_id, false)}
                   >
                     Reject
                   </button>
