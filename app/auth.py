@@ -98,6 +98,39 @@ async def login(req: LoginRequest):
     return {"token": token}
 
 
+@router.post("/auth/register")
+async def register(req: LoginRequest):
+    with get_conn() as conn:
+        # Check if email already exists
+        row = conn.execute("SELECT owner_id FROM owners WHERE email = %s", (req.email.lower().strip(),)).fetchone()
+        if row:
+            return JSONResponse(
+                status_code=400,
+                content={"error": {"code": "bad_request", "message": "Email already registered"}}
+            )
+        
+        # Insert new owner
+        hashed_pw = hash_password(req.password)
+        new_owner = conn.execute(
+            "INSERT INTO owners (email, password_hash) VALUES (%s, %s) RETURNING owner_id",
+            (req.email.lower().strip(), hashed_pw)
+        ).fetchone()
+        
+        owner_id = new_owner[0]
+        
+        # Assign them to a test business (e.g. test_shop) so they aren't empty
+        conn.execute(
+            "INSERT INTO owner_business_memberships (owner_id, business_id) VALUES (%s, 'test_shop') ON CONFLICT DO NOTHING",
+            (owner_id,)
+        )
+        
+        conn.commit()
+
+    token = create_access_token(owner_id=owner_id, email=req.email.lower().strip())
+    return {"token": token}
+
+
+
 @router.get("/auth/me")
 async def get_me(owner: dict = Depends(get_current_owner)):
     with get_conn() as conn:
