@@ -17,11 +17,14 @@ def init_pool() -> None:
     global pool
     pool = ConnectionPool(
         settings.database_url,
-        min_size=1,
-        max_size=5,
+        min_size=2,
+        max_size=15,
+        max_idle=300.0,
+        max_lifetime=1800.0,
+        check=ConnectionPool.check_connection,
         open=True,
     )
-    log.info("DB pool initialised (min=1, max=5)")
+    log.info("DB pool initialised (min=2, max=15, max_idle=300s, max_lifetime=1800s)")
 
 
 @contextlib.contextmanager

@@ -5,10 +5,11 @@ import AlertBanner from '../components/AlertBanner';
 import '../components/portal.css';
 
 type LoginProps = {
-  onLogin: () => void;
+  onLogin?: () => void;
+  navigate?: (route: string) => void;
 };
 
-export default function Login({ onLogin }: LoginProps) {
+export default function Login({ onLogin, navigate }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
@@ -23,7 +24,12 @@ export default function Login({ onLogin }: LoginProps) {
     try {
       const result = await api.login({ email: email.trim(), password });
       setAuthToken(result.token, email.trim());
-      onLogin();
+      if (onLogin) {
+        onLogin();
+      }
+      if (navigate) {
+        navigate('businesses');
+      }
     } catch (cause) {
       setError({
         message: cause instanceof ApiError ? cause.message : 'Sign-in failed. Please try again.',
@@ -106,6 +112,24 @@ export default function Login({ onLogin }: LoginProps) {
               {submitting ? <><span className="button-spinner" />Signing in</> : <>Continue <span aria-hidden="true">&#8594;</span></>}
             </button>
           </form>
+
+          <div style={{ marginTop: '20px', textAlign: 'center' }}>
+            <a
+              href="#register"
+              onClick={(e) => {
+                e.preventDefault();
+                if (navigate) {
+                  navigate('register');
+                } else {
+                  window.location.hash = 'register';
+                }
+              }}
+              style={{ color: 'var(--color-outline, #6f7881)', fontSize: '14px', textDecoration: 'underline', cursor: 'pointer' }}
+            >
+              Don't have an account? Register here.
+            </a>
+          </div>
+
           <p className="secure-note"><span aria-hidden="true">&#9679;</span> Your account only shows businesses you own.</p>
         </div>
         <footer className="login-footer">EMBERGROUND <span>OWNER WORKSPACE</span></footer>

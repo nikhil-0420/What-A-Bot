@@ -1,3 +1,4 @@
+// client.ts - API wrappers based on CONTRACTS.md
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const TOKEN_KEY = 'emberground.owner-token';
 const OWNER_EMAIL_KEY = 'emberground.owner-email';
@@ -94,22 +95,123 @@ export class ApiError extends Error {
   }
 }
 
-export function getAuthToken() {
-  return localStorage.getItem(TOKEN_KEY);
+export function getAuthToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY) || localStorage.getItem('token');
 }
 
-export function setAuthToken(token: string, email?: string) {
+export function setAuthToken(token: string, email?: string): void {
   localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem('token', token);
   if (email) localStorage.setItem(OWNER_EMAIL_KEY, email);
 }
 
-export function clearAuthToken() {
+export function clearAuthToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem('token');
   localStorage.removeItem(OWNER_EMAIL_KEY);
 }
 
-export function getSavedEmail() {
+export function getSavedEmail(): string {
   return localStorage.getItem(OWNER_EMAIL_KEY) || '';
+}
+
+function handleDevMock<T>(endpoint: string, _options: RequestInit = {}): T {
+  if (endpoint === '/auth/login' || endpoint === '/auth/register') {
+    return { token: `dev_token_${Date.now()}` } as T;
+  }
+
+  if (endpoint === '/auth/me') {
+    const email = getSavedEmail() || 'owner@demo.com';
+    return {
+      owner_id: '00000000-0000-0000-0000-000000000001',
+      email,
+      businesses: email.includes('restricted')
+        ? ['demo-stationery-1']
+        : ['demo-stationery-1', 'demo-supermarket-1', 'demo-services-1'],
+    } as T;
+  }
+
+  if (endpoint === '/businesses') {
+    const email = getSavedEmail();
+    const all: BusinessSummary[] = [
+      {
+        business_id: 'demo-stationery-1',
+        name: 'Sharma Stationery',
+        business_type: 'retail',
+        status: 'active',
+        bot_status_label: 'Telegram Bot Active',
+        skus_mapped: 50,
+      },
+      {
+        business_id: 'demo-supermarket-1',
+        name: 'Daily Fresh Supermarket',
+        business_type: 'retail',
+        status: 'active',
+        bot_status_label: 'Telegram Bot Active',
+        skus_mapped: 40,
+      },
+      {
+        business_id: 'demo-services-1',
+        name: 'UrbanFix Home Services',
+        business_type: 'service',
+        status: 'active',
+        bot_status_label: 'Live Bot',
+        skus_mapped: 12,
+      },
+    ];
+    if (email && email.includes('restricted')) {
+      return [all[0]] as T;
+    }
+    return all as T;
+  }
+
+  if (endpoint.includes('/bot-link')) {
+    const rand = Math.random().toString(36).slice(2, 10);
+    return {
+      token: `auth_tok_${rand}`,
+      deep_link_url: `https://t.me/WhatABotRetail_bot?start=auth_tok_${rand}`,
+      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    } as T;
+  }
+
+  if (endpoint.includes('/catalog')) {
+    return [
+      { sku: 'A', name: 'Classic Ruled A5', brand: 'Classmate', ruling: 'ruled', size: 'A5', price_paise: 4000, qty: 50 },
+      { sku: 'B', name: 'Premium Ruled A5', brand: 'Navneet', ruling: 'ruled', size: 'A5', price_paise: 5000, qty: 40 },
+      { sku: 'C', name: 'Deluxe Ruled A5', brand: 'Sundaram', ruling: 'ruled', size: 'A5', price_paise: 6000, qty: 50 },
+      { sku: 'D', name: 'Basic Unruled A5', brand: 'Classmate', ruling: 'unruled', size: 'A5', price_paise: 2500, qty: 30 },
+    ] as T;
+  }
+
+  if (endpoint.includes('/services')) {
+    return [
+      { service_id: 'srv-ac-repair', name: 'AC Repair & Service', duration_minutes: 60, price_paise: 49900 },
+      { service_id: 'srv-plumbing', name: 'Plumbing Inspection & Fix', duration_minutes: 45, price_paise: 29900 },
+    ] as T;
+  }
+
+  if (endpoint.includes('/holds') || endpoint.includes('/orders')) {
+    return [
+      { order_id: 'ord_101', status: 'held', total_paise: 125000, created_at: new Date().toISOString() },
+      { order_id: 'ord_102', status: 'confirmed', total_paise: 45000, created_at: new Date().toISOString() },
+    ] as T;
+  }
+
+  if (endpoint.includes('/evidence')) {
+    return [
+      { event_id: 'ev_1', input_id: 'in_1', kind: 'tool_call', data: { tool: 'find_options', latency_ms: 120 } },
+    ] as T;
+  }
+
+  if (endpoint.includes('/billing/status')) {
+    return { plan: 'trial', updated_at: new Date().toISOString() } as T;
+  }
+
+  if (endpoint.includes('/billing/checkout')) {
+    return { checkout_url: 'https://test.dodopayments.com/buy/mock_session' } as T;
+  }
+
+  return {} as T;
 }
 
 export async function fetchWithAuth<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -125,12 +227,22 @@ export async function fetchWithAuth<T>(endpoint: string, options: RequestInit = 
   try {
     response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
   } catch {
+    if (import.meta.env.DEV) {
+      console.warn(`[DEV MODE] Backend unreachable at ${BASE_URL}${endpoint}. Using mock fallback.`);
+      return handleDevMock<T>(endpoint, options);
+    }
     throw new ApiError('Could not reach the server. Check your connection and try again.', 0);
   }
 
   const payload = await response.json().catch(() => null) as ApiErrorEnvelope | null;
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAuthToken();
+      if (typeof window !== 'undefined' && window.location.hash) {
+        window.location.hash = 'login';
+      }
+    }
     throw new ApiError(
       payload?.error?.message || `Request failed (${response.status}). Please try again.`,
       response.status,
@@ -146,10 +258,14 @@ const businessPath = (id: string) => `/businesses/${encodeURIComponent(id)}`;
 export const api = {
   login: (data: { email: string; password: string }) =>
     fetchWithAuth<{ token: string }>('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  register: (data: { email: string; password: string }) =>
+    fetchWithAuth<{ token: string; status?: string }>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   getMe: () => fetchWithAuth<Owner>('/auth/me'),
   getBusinesses: () => fetchWithAuth<Business[]>('/businesses'),
   createBotLink: (id: string) => fetchWithAuth<BotLink>(`${businessPath(id)}/bot-link`, { method: 'POST' }),
   getCatalog: (id: string) => fetchWithAuth<CatalogItem[]>(`${businessPath(id)}/catalog`),
+  addItem: (id: string, data: Record<string, unknown>) =>
+    fetchWithAuth<CatalogItem>(`${businessPath(id)}/catalog`, { method: 'POST', body: JSON.stringify(data) }),
   getServices: (id: string) => fetchWithAuth<ServiceItem[]>(`${businessPath(id)}/services`),
   getSlots: (id: string, serviceId?: string) => {
     const query = serviceId ? `?${new URLSearchParams({ service_id: serviceId })}` : '';
@@ -203,6 +319,10 @@ class ApiClient {
     return result;
   }
 
+  register(email: string, password: string) {
+    return api.register({ email, password });
+  }
+
   getMe() {
     return api.getMe();
   }
@@ -217,6 +337,10 @@ class ApiClient {
 
   getCatalog(businessId: string) {
     return api.getCatalog(businessId);
+  }
+
+  addItem(businessId: string, data: Record<string, unknown>) {
+    return api.addItem(businessId, data);
   }
 
   getServices(businessId: string) {

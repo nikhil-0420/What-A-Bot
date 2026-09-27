@@ -6,8 +6,9 @@ import Header from '../components/Header';
 import '../components/portal.css';
 
 type BotLinkProps = {
-  business: Business;
-  onBack: () => void;
+  business?: Business;
+  businessId?: string;
+  onBack?: () => void;
 };
 
 function formatExpiry(value: string) {
@@ -17,7 +18,9 @@ function formatExpiry(value: string) {
     : new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' }).format(date);
 }
 
-export default function BotLink({ business, onBack }: BotLinkProps) {
+export default function BotLink({ business, businessId, onBack }: BotLinkProps) {
+  const activeBusinessId = business?.business_id || businessId || '';
+  const businessName = business?.name || activeBusinessId || 'Your Shop';
   const [link, setLink] = useState<BotLinkData | null>(null);
   const [error, setError] = useState('');
   const [working, setWorking] = useState(false);
@@ -28,7 +31,7 @@ export default function BotLink({ business, onBack }: BotLinkProps) {
     setCopied(false);
     setWorking(true);
     try {
-      setLink(await api.createBotLink(business.business_id));
+      setLink(await api.createBotLink(activeBusinessId));
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : 'Could not create a bot link. Please try again.');
     } finally {
@@ -48,17 +51,17 @@ export default function BotLink({ business, onBack }: BotLinkProps) {
 
   return (
     <main className="link-page">
-      <Header title={business.name} showBack onBack={onBack} />
+      {onBack && <Header title={businessName} showBack onBack={onBack} />}
 
       <section className="link-content">
-        <p className="eyebrow">{business.name.toUpperCase()} <span> / </span> WHATSAPP CONNECTION</p>
+        <p className="eyebrow">{businessName.toUpperCase()} <span> / </span> BOT CONNECTION</p>
         <h1>Connect your shop</h1>
         <p className="picker-intro">Create a one-time setup link for this business.</p>
 
         <div className="link-instructions">
           <div className="instruction-row"><span>01</span><p>Generate a secure, single-use link.</p></div>
-          <div className="instruction-row"><span>02</span><p>Open it on the WhatsApp account you want to connect.</p></div>
-          <div className="instruction-row"><span>03</span><p>Complete setup before it expires.</p></div>
+          <div className="instruction-row"><span>02</span><p>Open it on the WhatsApp or Telegram account you want to connect.</p></div>
+          <div className="instruction-row"><span>03</span><p>Press <strong>/start</strong> in the chat to bind the session before it expires.</p></div>
         </div>
 
         {link ? (
@@ -68,8 +71,13 @@ export default function BotLink({ business, onBack }: BotLinkProps) {
             <div className="copy-field">
               <input id="generated-url" value={link.deep_link_url} readOnly onFocus={(event) => event.currentTarget.select()} />
               <button className="button button-secondary" type="button" onClick={copyLink}>{copied ? 'Copied' : 'Copy link'}</button>
+              <a href={link.deep_link_url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+                <button className="button button-primary" type="button" style={{ background: 'var(--color-secondary, #006c4a)' }}>Open</button>
+              </a>
             </div>
-            <p className="link-warning">This link works once and expires after 10 minutes. Treat it like a password.</p>
+            <p className="link-warning">
+              This link works once and expires after 10 minutes. Click the link and send /start in Telegram/WhatsApp to activate your session.
+            </p>
             <button className="text-button regenerate-button" type="button" onClick={createLink} disabled={working}>
               {working ? 'Generating...' : 'Generate a fresh link'}
             </button>

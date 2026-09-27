@@ -9,15 +9,18 @@ Business logic belongs in transactions.py / holds.py / tools/.
 import logging
 from contextlib import asynccontextmanager
 
+from pathlib import Path
+
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from app.auth import router as auth_router
 from app.bot_link import router as bot_link_router
 from app.db import close_pool, health_ping, init_pool
 from app.dispatcher import dispatch_pending, start_dispatcher_loop
 from app.recovery import requeue_interrupted
-from app.sender import start_sender_loop
+from app.sender import close_sender, start_sender_loop
 from app.webhook import router as webhook_router
 
 logging.basicConfig(
@@ -40,6 +43,7 @@ async def lifespan(app: FastAPI):
     log.info("EmberGround ready")
     yield
     # --- Shutdown ---
+    await close_sender()
     close_pool()
     log.info("EmberGround shut down")
 
@@ -66,3 +70,26 @@ async def health():
     if ok:
         return {"status": "ok"}
     return JSONResponse(status_code=503, content={"status": "error", "message": "Database ping failed"})
+
+
+# --- Static File Serving & Frontend SPA Catch-all ---
+FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+ASSETS_DIR = FRONTEND_DIST / "assets"
+
+if ASSETS_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
+
+
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str = ""):
+    """Serve built frontend static assets or index.html for client-side routing."""
+    if full_path:
+        requested_file = FRONTEND_DIST / full_path
+        if requested_file.is_file():
+            return FileResponse(requested_file)
+
+    index_file = FRONTEND_DIST / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+
+    return Response(content="Frontend build not found. Run npm run build in frontend directory.", status_code=404)

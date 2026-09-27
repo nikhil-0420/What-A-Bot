@@ -35,6 +35,34 @@ def _get_session_lock(session_id: str) -> asyncio.Lock:
     return _session_locks[session_id]
 
 
+def _cleanup_session_lock(session_id: str) -> None:
+    """Remove session lock from registry if not locked and no pending messages remain."""
+    lock = _session_locks.get(session_id)
+    if lock is not None and not lock.locked():
+        waiters = getattr(lock, "_waiters", None)
+        if not waiters:
+            try:
+                import uuid
+                try:
+                    uuid.UUID(str(session_id))
+                    is_uuid = True
+                except ValueError:
+                    is_uuid = False
+
+                if is_uuid:
+                    with get_conn() as conn:
+                        remaining = conn.execute(
+                            "SELECT 1 FROM inbox WHERE session_id = %s AND status IN ('received', 'processing') LIMIT 1",
+                            (session_id,),
+                        ).fetchone()
+                    if remaining:
+                        return
+
+                _session_locks.pop(session_id, None)
+            except Exception:
+                log.exception("Error cleaning up session lock for %s", session_id)
+
+
 async def start_dispatcher_loop() -> None:
     """Start the supervised background dispatcher worker."""
     global _dispatcher_task
@@ -80,6 +108,7 @@ async def dispatch_due_batch() -> bool:
         lock = _get_session_lock(session_id)
         async with lock:
             await _process_one(input_id, session_id, business_id)
+        _cleanup_session_lock(session_id)
 
     return True
 
@@ -91,6 +120,7 @@ async def enqueue_dispatch(input_id: str, session_id: str, business_id: str) -> 
     lock = _get_session_lock(session_id)
     async with lock:
         await _process_one(input_id, session_id, business_id)
+    _cleanup_session_lock(session_id)
 
 
 async def dispatch_pending() -> None:
@@ -130,7 +160,7 @@ async def _process_one(input_id: str, session_id: str, business_id: str | None) 
     """Process a single inbox row through the terminal-action pattern.
     Bounded retry with backoff; after MAX_ATTEMPTS, mark 'attention'."""
 
-    # Mark processing
+    # Mark processing and read session details in a single connection checkout
     with get_conn() as conn:
         with conn.transaction():
             row = conn.execute(
@@ -142,24 +172,21 @@ async def _process_one(input_id: str, session_id: str, business_id: str | None) 
                 (input_id,),
             ).fetchone()
 
-    if row is None:
-        log.info("Skipping %s — already completed or missing", input_id)
-        return
+            if row is None:
+                log.info("Skipping %s — already completed or missing", input_id)
+                return
 
-    attempt = row[0]
-    body = row[1]
-    # Always prefer the DB-persisted business_id from the row itself
-    business_id = row[2] or business_id
+            attempt = row[0]
+            body = row[1]
+            business_id = row[2] or business_id
 
-    try:
-        # Look up destination phone from session
-        with get_conn() as conn:
             session_row = conn.execute(
                 "SELECT customer_phone FROM sessions WHERE session_id = %s",
                 (session_id,),
             ).fetchone()
-        customer_phone = session_row[0] if session_row else ""
+            customer_phone = session_row[0] if session_row else ""
 
+    try:
         body_text = body.get("text", "") if isinstance(body, dict) else str(body)
 
         # Handle unlinked customer session
@@ -250,10 +277,10 @@ async def _process_one(input_id: str, session_id: str, business_id: str | None) 
                     conn.execute(
                         """
                         UPDATE inbox SET status = 'received', last_error = %s,
-                            next_attempt_at = now() + (interval '1 second' * %s)
+                            next_attempt_at = now() + make_interval(secs => %s)
                         WHERE input_id = %s
                         """,
-                        (error_msg[-500:], backoff, input_id),
+                        (error_msg[-500:], float(backoff), input_id),
                     )
             log.warning("Will retry %s in %ds (attempt %d of %d)", input_id, backoff, attempt, MAX_ATTEMPTS)
 
