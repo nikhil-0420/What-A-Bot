@@ -1,121 +1,82 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import { useState, useEffect } from 'react'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import BusinessPicker from './pages/BusinessPicker'
+import BotLink from './pages/BotLink'
+import Stock from './pages/Stock'
+import Holds from './pages/Holds'
+import Evidence from './pages/Evidence'
+import Billing from './pages/Billing'
 import './App.css'
+import './index.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [route, setRoute] = useState(window.location.hash.slice(1) || 'login');
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setRoute(window.location.hash.slice(1) || 'login');
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const navigate = (newRoute: string) => {
+    window.location.hash = newRoute;
+  };
+
+  // Extract business ID from routes like "dashboard/demo-stationery-1"
+  const isDashboard = route.startsWith('dashboard/');
+  const businessId = isDashboard ? route.split('/')[1] : null;
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div className="app-container">
+      <aside className="app-sidebar">
+        <div className="sidebar-header">
+          <h1>What-A-Bot</h1>
+          <span className="version-badge">APP</span>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+        
+        <nav className="app-nav">
+          {!businessId ? (
+            <>
+              <div className="nav-group-title">ACCOUNT</div>
+              <button className={route === 'login' ? 'active' : ''} onClick={() => navigate('login')}>Login</button>
+              <button className={route === 'register' ? 'active' : ''} onClick={() => navigate('register')}>Register</button>
+              <button className={route === 'businesses' ? 'active' : ''} onClick={() => navigate('businesses')}>My Businesses</button>
+            </>
+          ) : (
+            <>
+              <div className="nav-group-title">STORE DASHBOARD</div>
+              <button className={route === `dashboard/${businessId}` ? 'active' : ''} onClick={() => navigate(`dashboard/${businessId}`)}>Stock & Catalog</button>
+              <button className={route === `dashboard/${businessId}/holds` ? 'active' : ''} onClick={() => navigate(`dashboard/${businessId}/holds`)}>Order Holds</button>
+              <button className={route === `dashboard/${businessId}/evidence` ? 'active' : ''} onClick={() => navigate(`dashboard/${businessId}/evidence`)}>AI Evidence</button>
+              
+              <div className="nav-group-title" style={{ marginTop: '24px' }}>SETTINGS</div>
+              <button className={route === `dashboard/${businessId}/billing` ? 'active' : ''} onClick={() => navigate(`dashboard/${businessId}/billing`)}>Billing Plan</button>
+              <button className={route === `dashboard/${businessId}/link` ? 'active' : ''} onClick={() => navigate(`dashboard/${businessId}/link`)}>Telegram Bot Link</button>
+              
+              <div style={{ marginTop: 'auto', paddingTop: '24px' }}>
+                <button style={{ width: '100%', opacity: 0.7 }} onClick={() => { localStorage.removeItem('token'); navigate('login'); }}>Logout</button>
+              </div>
+            </>
+          )}
+        </nav>
+      </aside>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      <main className="app-content">
+        <div className="content-inner">
+          {route === 'login' && <Login navigate={navigate} />}
+          {route === 'register' && <Register navigate={navigate} />}
+          {route === 'businesses' && <BusinessPicker navigate={navigate} />}
+          {businessId && route === `dashboard/${businessId}` && <Stock businessId={businessId} />}
+          {businessId && route === `dashboard/${businessId}/holds` && <Holds businessId={businessId} />}
+          {businessId && route === `dashboard/${businessId}/evidence` && <Evidence businessId={businessId} />}
+          {businessId && route === `dashboard/${businessId}/billing` && <Billing businessId={businessId} />}
+          {businessId && route === `dashboard/${businessId}/link` && <BotLink businessId={businessId} />}
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      </main>
+    </div>
   )
 }
 
