@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { api } from '../api/client';
 
 export default function BotLink({ businessId }: { businessId: string }) {
