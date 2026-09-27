@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import BusinessPicker from './pages/BusinessPicker'
-import BotLink from './pages/BotLink'
-import Stock from './pages/Stock'
-import Holds from './pages/Holds'
-import Evidence from './pages/Evidence'
-import Billing from './pages/Billing'
-import './App.css'
-import './index.css'
+import { useState, useEffect } from 'react';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import BusinessPicker from './pages/BusinessPicker';
+import BotLink from './pages/BotLink';
+import Stock from './pages/Stock';
+import Holds from './pages/Holds';
+import Evidence from './pages/Evidence';
+import Billing from './pages/Billing';
+import { clearAuthToken } from './api/client';
+import './App.css';
+import './index.css';
 
-function App() {
+export default function App() {
   const [route, setRoute] = useState(window.location.hash.slice(1) || 'login');
 
   useEffect(() => {
@@ -57,7 +58,7 @@ function App() {
               <button className={route === `dashboard/${businessId}/link` ? 'active' : ''} onClick={() => navigate(`dashboard/${businessId}/link`)}>Telegram Bot Link</button>
               
               <div style={{ marginTop: 'auto', paddingTop: '24px' }}>
-                <button style={{ width: '100%', opacity: 0.7 }} onClick={() => { localStorage.removeItem('token'); navigate('login'); }}>Logout</button>
+                <button style={{ width: '100%', opacity: 0.7 }} onClick={() => { clearAuthToken(); navigate('login'); }}>Logout</button>
               </div>
             </>
           )}
@@ -77,7 +78,5 @@ function App() {
         </div>
       </main>
     </div>
-  )
+  );
 }
-
-export default App
