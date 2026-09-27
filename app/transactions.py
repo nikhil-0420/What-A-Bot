@@ -39,6 +39,7 @@ def run_terminal_action(
     kind: str,
     business_action,
     reply_payload: dict,
+    conn=None,
 ) -> dict:
     """
     Execute the Section F terminal-action transaction.
@@ -58,19 +59,29 @@ def run_terminal_action(
     event_key = f"{input_id}:{kind}"
     outbox_id = str(uuid.uuid4())
 
-    with get_conn() as conn:
-        with conn.transaction():
-            # 1. Lock the inbox row
-            row = conn.execute(
-                "SELECT status FROM inbox WHERE input_id = %s FOR UPDATE",
+    def _execute_in_tx(tx_conn):
+        with tx_conn.transaction():
+            # 1. Lock the inbox row and validate session_id and business_id
+            row = tx_conn.execute(
+                "SELECT status, session_id, business_id FROM inbox WHERE input_id = %s FOR UPDATE",
                 (input_id,),
             ).fetchone()
 
             if row is None:
                 raise ValueError(f"No inbox row for input_id={input_id}")
 
+            status, inbox_session_id, inbox_business_id = row
+            if str(inbox_session_id) != str(session_id):
+                raise ValueError(
+                    f"Session mismatch for input_id={input_id}: expected {session_id}, got {inbox_session_id}"
+                )
+            if str(inbox_business_id) != str(business_id):
+                raise ValueError(
+                    f"Business mismatch for input_id={input_id}: expected {business_id}, got {inbox_business_id}"
+                )
+
             # 2. Check for existing outcome — replay guard
-            existing = conn.execute(
+            existing = tx_conn.execute(
                 "SELECT result FROM message_outcomes WHERE input_id = %s",
                 (input_id,),
             ).fetchone()
@@ -81,13 +92,13 @@ def run_terminal_action(
 
             # 3. Execute the business action (if any)
             if business_action is not None:
-                result = business_action(conn)
+                result = business_action(tx_conn)
             else:
                 result = {"kind": kind, "status": "ok"}
 
             # 4. INSERT message_outcomes
-            order_id = result.get("order_id")
-            conn.execute(
+            order_id = result.get("order_id") if isinstance(result, dict) else None
+            tx_conn.execute(
                 """
                 INSERT INTO message_outcomes (input_id, order_id, kind, result)
                 VALUES (%s, %s, %s, %s)
@@ -96,7 +107,7 @@ def run_terminal_action(
             )
 
             # 5. INSERT outbox (unique event_key)
-            conn.execute(
+            tx_conn.execute(
                 """
                 INSERT INTO outbox (outbox_id, event_key, input_id, session_id,
                                     business_id, payload, state)
@@ -108,10 +119,18 @@ def run_terminal_action(
             )
 
             # 6. UPDATE inbox status to completed
-            conn.execute(
+            tx_conn.execute(
                 "UPDATE inbox SET status = 'completed' WHERE input_id = %s",
                 (input_id,),
             )
+
+            return result
+
+    if conn is not None:
+        result = _execute_in_tx(conn)
+    else:
+        with get_conn() as connection:
+            result = _execute_in_tx(connection)
 
     log.info("Terminal action committed: input=%s kind=%s", input_id, kind)
     return result
@@ -168,3 +187,27 @@ def decrement_stock(conn, business_id: str, sku: str, quantity: int,
         (quantity, business_id, sku, quantity, quoted_price_paise),
     ).fetchone()
     return row[0] if row else None
+
+
+def decrement_slot_capacity(conn, business_id: str, service_id: str,
+                            slot_id: str) -> int | None:
+    """
+    Capacity decrement CAS against service_slots.capacity:
+        UPDATE service_slots SET capacity = capacity - 1
+        WHERE slot_id = %s AND service_id = %s AND business_id = %s
+          AND capacity >= 1
+        RETURNING capacity
+    Returns remaining capacity on success, None on exhaustion.
+    Must be called inside a transaction.
+    """
+    row = conn.execute(
+        """
+        UPDATE service_slots SET capacity = capacity - 1
+        WHERE slot_id = %s AND service_id = %s AND business_id = %s
+          AND capacity >= 1
+        RETURNING capacity
+        """,
+        (slot_id, service_id, business_id),
+    ).fetchone()
+    return row[0] if row else None
+
