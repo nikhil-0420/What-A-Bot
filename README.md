@@ -1,4 +1,4 @@
-# 🏪 EmberGround
+# 🏪 What-A-Bot
 
 ### An Agentic Ordering & Booking Assistant for Small Indian Businesses — Telegram-Native, Multi-Tenant, Replay-Safe
 
