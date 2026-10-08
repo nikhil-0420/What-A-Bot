@@ -20,7 +20,7 @@
 
 Small Indian shop owners field the same repetitive WhatsApp/chat questions all day — "do you have X," "what's it cost for Y," "can I get a mix of brands under this budget" — and either answer manually every time or lose the order to friction.
 
-EmberGround is an agent that sits in that conversation and actually does the ordering work:
+What-A-Bot is an agent that sits in that conversation and actually does the ordering work:
 
 - A retailer logs into a web dashboard, picks their business, and generates a one-time link that binds a Telegram chat to their shop
 - A customer orders directly in that chat — including Hinglish, budget-constrained requests like *"12 A5 ruled copies chahiye, total 600 ke andar, mixed brands chalega"*
